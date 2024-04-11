@@ -306,37 +306,6 @@ for(i in 1:nrow(gap_distance)) {       # for-loop over rows
 }
 
 
-quantile(gap_dist$dist_near_gap)
-# 0%         25%         50%         75%        100% 
-# 6.40   495.101      700.86      954.97      1967.067 
-
-mean(gap_dist$dist_near_gap) # 738.7354
-
-saveRDS(gap_dist, "data/processed/creation/dist_new_gap.917.rds")
-
-My_Theme = theme(
-  title = element_text(size = 18),
-  axis.title.x = element_text(size = 30),
-  axis.text.x = element_text(size = 24,angle = 45, hjust=1),
-  axis.text.y = element_text(size = 24),
-  axis.title.y = element_text(size = 30),
-  legend.key.height = unit(1, 'cm'),
-  legend.title = element_text(size=30),
-  legend.text = element_text(size=30),
-  strip.text.x = element_text(size = 20),
-  panel.spacing = unit(2, "lines"),
-  legend.position="top")
-
-tiff("data/results/gap_creation/new_gap_dist_917.tiff", units="in", width=12, height=8, res=300)
-ggplot(gap_dist, aes(x=dist_near_gap)) + geom_histogram(bins=100) +
-  theme_classic() +
-  geom_histogram(color = "#000000", fill = "lightgreen") +
-  geom_vline(aes(xintercept = mean(dist_near_gap)), color = "#000000", size = 1.25) +
-  geom_vline(aes(xintercept = mean(dist_near_gap) + sd(dist_near_gap)), color = "#000000", size = 1, linetype = "dashed") +
-  geom_vline(aes(xintercept = mean(dist_near_gap) - sd(dist_near_gap)), color = "#000000", size = 1, linetype = "dashed")+
-  labs(x= "Distance from new gap to nearest existing gap (m)", y= "Density") + My_Theme
-dev.off()
-
 # --- 2017 - 2021 ---
 
 gaps_poly.1721 <- as.polygons(gap_stack_2021$gap.id)
@@ -357,24 +326,6 @@ for(i in 1:nrow(gap_distance)) {       # for-loop over rows
   names(gap_dist) <- c("gap_id", "dist_near_gap")
 }
 
-
-quantile(gap_dist$dist_near_gap)
-# 0%       25%       50%       75%      100% 
-# 1.00000  64.05803 157.00225 257.05472 830.67021 
-
-mean(gap_dist$dist_near_gap) # 179.6479
-
-saveRDS(gap_dist, "data/processed/creation/dist_new_gap.1721.rds")
-
-tiff("data/results/gap_creation/new_gap_dist_1721.tiff", units="in", width=12, height=8, res=300)
-ggplot(gap_dist, aes(x=dist_near_gap)) + geom_histogram(bins=100) +
-  theme_classic() +
-  geom_histogram(color = "#000000", fill = "lightgreen") +
-  geom_vline(aes(xintercept = mean(dist_near_gap)), color = "#000000", size = 1.25) +
-  geom_vline(aes(xintercept = mean(dist_near_gap) + sd(dist_near_gap)), color = "#000000", size = 1, linetype = "dashed") +
-  geom_vline(aes(xintercept = mean(dist_near_gap) - sd(dist_near_gap)), color = "#000000", size = 1, linetype = "dashed")+
-  labs(x= "Distance from new gap to nearest existing gap (m)", y= "Density") + My_Theme
-dev.off()
 
 # --- combine both time steps
 
@@ -472,8 +423,6 @@ gap.creation <- gap_features921 %>% group_by(new.exp, year) %>%
          sd = sd(gap.creation.annual,2),
         median = round(median(gap.creation.annual),2),
         q2.5 = quantile(gap.creation.annual, 0.025),
-        q5 = quantile(gap.creation.annual, 0.05),
-        q95 = quantile(gap.creation.annual, 0.95),
         q97.5 = quantile(gap.creation.annual, 0.975),)
 
 saveRDS(gap.creation, "data/processed/creation/gap_creation_final.rds" )
@@ -489,8 +438,6 @@ gap.creation$sd_ascaled <- round(gap.creation$sd * gap.creation$area.scaling.fac
 
 # scale median and quantiles
 gap.creation$median.scaled <- gap.creation$median*gap.creation$area.scaling.factor
-gap.creation$q5_ascaled <- round(gap.creation$q5 * gap.creation$area.scaling.factor,2)
-gap.creation$q95_ascaled <- round(gap.creation$q95 * gap.creation$area.scaling.factor,2)
 gap.creation$q2.5_ascaled <- round(gap.creation$q2.5 * gap.creation$area.scaling.factor,2)
 gap.creation$q97.5_ascaled <- round(gap.creation$q97.5 * gap.creation$area.scaling.factor,2)
 
@@ -509,8 +456,6 @@ gap.creation.ftype <- gap_features921 %>% group_by(new.exp, year, forest_type) %
   mutate(avg.gap.creation.annual = round(mean(gap.creation.annual),2),
          sd = sd(gap.creation.annual),
          median = round(median(gap.creation.annual),2),
-         q5 = quantile(gap.creation.annual, 0.05),
-         q95 = quantile(gap.creation.annual, 0.95),
          q2.5 = quantile(gap.creation.annual, 0.025),
          q97.5 = quantile(gap.creation.annual, 0.975))
 
@@ -528,13 +473,11 @@ gap.creation.ftype.scaled <- merge(gap.creation.ftype.scaled, area_share_class[,
 gap.creation.ftype.scaled$area.scaling.factor <- 100/gap.creation.ftype.scaled$total_area
 
 gap.creation.ftype.scaled$median_ascaled <- round(gap.creation.ftype.scaled$median * gap.creation.ftype.scaled$area.scaling.factor,2)
-gap.creation.ftype.scaled$q5_ascaled <- round(gap.creation.ftype.scaled$q5 * gap.creation.ftype.scaled$area.scaling.factor,2)
-gap.creation.ftype.scaled$q95_ascaled <- round(gap.creation.ftype.scaled$q95 * gap.creation.ftype.scaled$area.scaling.factor,2)
 gap.creation.ftype.scaled$q2.5_ascaled <- round(gap.creation.ftype.scaled$q2.5 * gap.creation.ftype.scaled$area.scaling.factor,2)
 gap.creation.ftype.scaled$q97.5_ascaled <- round(gap.creation.ftype.scaled$q97.5 * gap.creation.ftype.scaled$area.scaling.factor,2)
 
 forest_gap <- as.data.frame(gap.creation.ftype.scaled)
-forest_gap <- forest_gap[,c("forest_type", "new.exp", "median_ascaled","q5_ascaled", "q95_ascaled", "q2.5_ascaled", "q97.5_ascaled") ]
+forest_gap <- forest_gap[,c("forest_type", "new.exp", "median_ascaled", "q2.5_ascaled", "q97.5_ascaled") ]
 
 ftype <- as.character(unique(forest_gap$forest_type))
 
@@ -545,12 +488,9 @@ forest_gap$new.exp <- as.character(forest_gap$new.exp)
 
 for(i in ftype) {
   sub <- subset(forest_gap, forest_type %in% i)
-  k <- c(i, "Total", sum(sub$median_ascaled), sum(sub$q5_ascaled), sum(sub$q95_ascaled), 
-                                                        sum(sub$q2.5_ascaled), sum(sub$q97.5_ascaled))
+  k <- c(i, "Total", sum(sub$median_ascaled), sum(sub$q2.5_ascaled), sum(sub$q97.5_ascaled))
   forest_gap <- rbind(forest_gap, k)
   forest_gap$median_ascaled <- as.numeric(forest_gap$median_ascaled)
-  forest_gap$q5_ascaled <- as.numeric(forest_gap$q5_ascaled)
-  forest_gap$q95_ascaled <- as.numeric(forest_gap$q95_ascaled)
   forest_gap$q2.5_ascaled <- as.numeric(forest_gap$q2.5_ascaled)
   forest_gap$q97.5_ascaled <- as.numeric(forest_gap$q97.5_ascaled)
 }
@@ -576,8 +516,6 @@ gap.creation.elevation<- gap_features921 %>% group_by(new.exp, year, elevation) 
   mutate(avg.gap.creation.annual = round(mean(gap.creation.annual),2),
          sd = sd(gap.creation.annual),
          median = round(median(gap.creation.annual),2),
-         q5 = quantile(gap.creation.annual, 0.05),
-         q95 = quantile(gap.creation.annual, 0.95),
          q2.5 = quantile(gap.creation.annual, 0.025),
          q97.5 = quantile(gap.creation.annual, 0.975))
 
@@ -684,22 +622,6 @@ My_Theme = theme(
   panel.spacing = unit(2, "lines"),
   legend.position = c(0.8, 0.8))
 
-# 90th quantile data range
-
-tiff("data/results/gap_creation/area_new_exp_90quantile.tiff", units="in", width=12, height=9, res=300)
-ggplot(gap.creation, aes(x=new.exp , y=median.scaled, colour= new.exp, group= new.exp, fill=new.exp)) + 
-  geom_point(shape = 21, size = 16) +
-  theme_classic()+ coord_flip() +
-  scale_color_manual(values = c("gray40", "#E69F00"), name = "Formation mechanism", guide = "none") +
-  scale_fill_manual(values = c("gray40", "#E69F00"), name = "Formation mechanism", guide = "none") +
-  My_Theme +
-  labs(x = "", y=expression(atop("Rate of gap formation", "(" * ha * " " * 100 * ha^-1 * " " * year^-1 * ")"))) + 
-  geom_pointrange(aes(ymin=q5_ascaled, ymax=q95_ascaled), linewidth = 4)
-dev.off()
-
-
-
-# 95th quantile data range
 
 tiff("data/results/gap_creation/area_new_exp_95quantile.tiff", units="in", width=12, height=9, res=300)
 ggplot(gap.creation, aes(x=new.exp , y=median.scaled, colour= new.exp, group= new.exp, fill=new.exp)) + 
@@ -736,22 +658,6 @@ My_Theme = theme(
 forest_gap$new.exp <- ordered(forest_gap$new.exp, levels = c("New", "Expanding","Total"))
 
 
-# 90th quantile data range
-
-tiff("data/results/gap_creation/area_new_exp_ftype_90quantile.tiff", units="in", width=12, height=8, res=300)
-ggplot(forest_gap, aes(x=forest_type , y=median_ascaled, fill=new.exp)) + 
-  geom_point(aes(colour= new.exp), shape = 21, size = 8, position=position_dodge(width=0.7)) +
-  scale_color_manual(values = c("#E69F00", "grey40", "#56B4E9"), name = "Formation mechanism")+
-  scale_fill_manual(values = c("#E69F00", "grey40", "#56B4E9"), name = "Formation mechanism")+
-  theme_minimal()+ coord_flip() +
-  My_Theme +
-  labs(x = "Forest type", y= expression("Rate of gap formation (" * ha * " " * 100 * ha^-1 * " " * year^-1 * ")"), fill= "Formation mechanism", shape = "Formation mechanism") + 
-  geom_pointrange(aes(ymin=q5_ascaled, ymax=q95_ascaled, colour = new.exp), 
-                  position = position_dodge(width=0.7), linewidth = 1.5)
-dev.off()
-
-# 95th quantile data range
-
 tiff("data/results/gap_creation/area_new_exp_ftype_95quantile.tiff", units="in", width=12, height=8, res=300)
 ggplot(forest_gap, aes(x=forest_type , y=median_ascaled, fill=new.exp)) + 
   geom_point(aes(colour= new.exp), shape = 21, size = 8, position=position_dodge(width=0.7)) +
@@ -780,8 +686,8 @@ My_Theme = theme(
   panel.spacing = unit(2, "lines"),
   legend.position = "top")
 
-# --- aspect
 
+# --- aspect
 
 gap.creation.aspect<- gap_features921 %>% group_by(new.exp, year, aspect) %>%
   summarize(gap.creation.ha = sum(exp.area.ha),
