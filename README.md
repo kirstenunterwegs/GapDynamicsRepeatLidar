@@ -13,6 +13,6 @@ software used for development and implementation : R version 4.3.3
 ## Directory structure and files:
 
 - `data/`: folder containing all input and output data as well as intermediate data layer
-- `data/raw/`: Inputs and project files used to rerun forest simulations. Will be available in EDI data deposit.
+- `data/raw/`: Inputs and project files used in the analysis. Gap layer are available under the above stated zenodo repository.
 - `data/processed/`: Any data altered from its raw format. Is dubsivided into a folder containing the gap layers (gaps_final), environmental variables (environment_features), data around gap formation (creation) and gap closure (closure).
 - `data/results/`: Figures displaying analysis results
