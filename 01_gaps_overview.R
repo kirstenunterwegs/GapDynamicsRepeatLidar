@@ -12,7 +12,6 @@ library(tidyr)
 library(terra)
 
 
-setwd("C:/Users/ge92vuh/Documents/Projects/GapDynamics/final_submission")
 # --- load layers ----
 
 gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
@@ -140,8 +139,7 @@ getElevation <- function(gap_df) {
                                                   `4`="1200-1400",
                                                   `5`="1400-1600",
                                                   `6`="1600-1800",
-                                                  `7`="1800-2000",
-                                                  `8`="2000-2800")))
+                                                  `7`="1800-2000")))
   return(xx)
 }
 
