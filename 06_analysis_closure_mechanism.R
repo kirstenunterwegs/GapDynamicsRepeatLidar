@@ -2,7 +2,6 @@
 #
 # Analyze gap closure (rate & mechanism)
 #
-#
 ##############################################################################
 
 
@@ -13,20 +12,14 @@ library(ggplot2)
 library(RColorBrewer)
 
 
-# --- prepare closure mechanism dataframes per time step ---
+# --- load layers ---
 
 
-# prepare layers to limit analysis to core zone, below 1800m and with forest type information
+gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
 
-# --- load NP information 
-
-foresttype <- rast("data/processed/environment_features/forest_type2020_reclass_1m.tif")
-management <- vect("data/raw/npb_zonierung_22_epsg25832.shp")
-aspect<-  rast("data/processed/environment_features/aspect_2021_classified_1m.tif")
-elevation.below1800 <- rast("data/processed/environment_features/elevation_below1800_200steps.tif")
-
-# exclude management zone
-core.zone <- subset(management, management$zone_id == 4, c(1:2))
+gaps2009 <- gap_stack[[1]]
+gaps2017 <- gap_stack[[2]]
+gaps2021 <- gap_stack[[3]]
 
 
 # --- 2009 - 2017 ---
@@ -34,34 +27,23 @@ core.zone <- subset(management, management$zone_id == 4, c(1:2))
 # --- merge closure mechanism with gaps
 
 gap_closure_mechanism917 <- rast( "data/processed/closure/gap_closure_mechanism917.tif")
-gaps2009 <- rast("data/processed/gaps_final/berchtesgaden_2009_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
 
 # crop and stack
 
 gaps2009 <- crop(gaps2009, gap_closure_mechanism917)
 gap_closure_mechanism_stack <- c(gap_closure_mechanism917, gaps2009)
 
-# crop environmental features to same extent
-
-elevation.below1800 <- crop(elevation.below1800, gap_closure_mechanism917 )
-foresttype <- crop(foresttype, gap_closure_mechanism917 )
-
-# mask stack to research area
-
-gap_closure_mechanism_stack <- mask(gap_closure_mechanism_stack, elevation.below1800)
-gap_closure_mechanism_stack <- mask(gap_closure_mechanism_stack, foresttype)
-gap_closure_mechanism_stack <- mask(gap_closure_mechanism_stack, core.zone)
 
 # - convert stack to a data frame for further processing and analysis
 
-gap_closure_mechanism_stack.df <- as.data.frame(gap_closure_mechanism_stack, na.rm=FALSE)
+gap_closure_mechanism_stack.df <- as.data.frame(gap_closure_mechanism_stack, na.rm=FALSE)# takes some time
 
 # exclude pixels without gap (and hence closure):
 
 gap_closure_mechanism_stack.df <- gap_closure_mechanism_stack.df[rowSums(is.na(gap_closure_mechanism_stack.df)) != ncol(gap_closure_mechanism_stack.df), ]
 names(gap_closure_mechanism_stack.df) <- c("closure_mechanism", "gap_id")
 
-# # save data frame in case RAM runs full
+# -- save data frame in case RAM runs full --
 # saveRDS(gap_closure_mechanism_stack.df,"data/processed/closure/gap_closure_mechanism_pergap_917.rds" )
  gap_closure_mechanism_stack.df <- readRDS("data/processed/closure/gap_closure_mechanism_pergap_917.rds")
 
@@ -74,7 +56,6 @@ gap_clo_per_id <-  gap_closure_mechanism_stack.df %>% group_by(gap_id) %>%
 #drop gaps < 400 m2 (emerge through masking of research area, as large gaps transcending management area or elevation lines get cut)
 gap_clo_per_id <- gap_clo_per_id[gap_clo_per_id$gap_area >= 400,]
 
-
 #calculate share of closure mechanism on whole gap area
 gap_clo_per_id$closure_share = round(gap_clo_per_id$n/gap_clo_per_id$gap_area,2) 
 
@@ -84,8 +65,8 @@ gap_clo_per_id$contraction <- ifelse(is.na(gap_clo_per_id$closure_mechanism) & g
 sum(gap_clo_per_id$contraction) # 5 gaps do not experience any closure from 2009-2017
 
 
-# drop NAs, which is gap area which did not close - "no closure" closure area is here area, --!
-# which falls within a context of closing gaps 
+# drop NAs, which is gap area which did not close - "no closure" closure area is here area,
+# which falls within a extent of closing gaps 
 # - so they do not have a connection to the remaining gap area OR gather connected enough area for the gap definition
 
 gap_clo_per_id_nona <- gap_clo_per_id %>% drop_na(closure_mechanism)  
@@ -110,7 +91,6 @@ gap_clo_per_id_nona <- gap_clo_per_id_nona %>% group_by(gap_id) %>%
          closure_area = n,
          closure_area_sum = sum(closure_area))
 
-#gap_clo_per_id_nona$gap_area <- as.numeric(gap_clo_per_id_nona$gap_area)
 
 # bin gap areas and get closure share per gap size bin
 gap_clo_per_id_nona_917<-gap_clo_per_id_nona %>% 
@@ -135,22 +115,14 @@ gap_clo_per_id_nona_917<-gap_clo_per_id_nona %>%
 
 #merge closure mechanism with gaps
 gap_closure_mechanism1721 <- rast("data/processed/closure/gap_closure_mechanism1721.tif")
-gaps2017 <- rast("data/processed/gaps_final/berchtesgaden_2017_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
 
 # crop and stack
 
 gaps2017 <- crop(gaps2017, gap_closure_mechanism1721)
 gap_closure_mechanism_stack_1721 <- c(gap_closure_mechanism1721, gaps2017)
 
-elevation.below1800 <- crop(elevation.below1800, gap_closure_mechanism1721)
-foresttype <- crop(foresttype, gap_closure_mechanism1721)
-# mask stack to research area
-
-gap_closure_mechanism_stack_1721 <- mask(gap_closure_mechanism_stack_1721, elevation.below1800)
-gap_closure_mechanism_stack_1721 <- mask(gap_closure_mechanism_stack_1721, foresttype)
-gap_closure_mechanism_stack_1721 <- mask(gap_closure_mechanism_stack_1721, core.zone)
-
-gap_closure_mechanism_stack.df_1721 <- as.data.frame(gap_closure_mechanism_stack_1721, na.rm=FALSE)
+# convert to a dataframe
+gap_closure_mechanism_stack.df_1721 <- as.data.frame(gap_closure_mechanism_stack_1721, na.rm=FALSE) #take some time
 
 #exclude pixels without gap (and hence closure):
 gap_closure_mechanism_stack.df_1721 <- gap_closure_mechanism_stack.df_1721[rowSums(is.na(gap_closure_mechanism_stack.df_1721)) != ncol(gap_closure_mechanism_stack.df_1721), ]
@@ -176,14 +148,11 @@ gap_clo_per_id$closure_share = round(gap_clo_per_id$n/gap_clo_per_id$gap_area,2)
 gap_clo_per_id$contraction <- ifelse(is.na(gap_clo_per_id$closure_mechanism) & gap_clo_per_id$closure_share >= 0.99, 1,0 )
 sum(gap_clo_per_id$contraction) # 106 gaps do not experience any closure from 2009-2017
 
-gaps_no_closing <- subset(gap_clo_per_id, contraction %in% 1)
-range(gaps_no_closing$gap_area) # range 401-5678
-
-# drop NAs, which is gap area which did not close - "no closure" closure area is here area, --!
+# drop NAs, which is gap area which did not close - "no closure" closure area is here area,
 # which falls within a context of closing gaps 
 # - so they do not have a connection to the remaining gap area OR gather connected enough area for the gap definition
 gap_clo_per_id_nona <- gap_clo_per_id %>% drop_na(closure_mechanism) #drop pixels not closing
-gap_clo_per_id_nona$closure_mechanism <- as.factor(gap_clo_per_id_nona$closure_mechanism) #make closure mechanism as factor
+gap_clo_per_id_nona$closure_mechanism <- as.factor(gap_clo_per_id_nona$closure_mechanism) 
 
 
 # recode closure mechanism
@@ -226,14 +195,11 @@ gap_clo_per_id_nona_1721<-gap_clo_per_id_nona %>%
 
 
 
-# ------------merge 9-17 and 17-21 dfs for comparison -----------
-
-
+# ------------merge both time stepc(9-17 and 17-21) dfs for comparison -----------
 
 
 gap_clo_per_id_nona_1721$timestep <- "17-21"
 gap_clo_per_id_nona_917$timestep <- "9-17"
-
 
 gap_clo_NP_91721 <- rbind(gap_clo_per_id_nona_917, gap_clo_per_id_nona_1721)
 gap_clo_NP_91721$timestep <- factor(gap_clo_NP_91721$timestep , levels=c("9-17", "17-21"))# arrange time step labels
@@ -241,6 +207,7 @@ gap_clo_NP_91721$timestep <- factor(gap_clo_NP_91721$timestep , levels=c("9-17",
 
 # -- add environmental feature information
 
+#join with aspect information
 stats_aspect <- readRDS("data/processed/gap_features/stats_all_aspect.rds")
 # recode years to time steps for merges
 stats_aspect <- stats_aspect %>% mutate( timestep = as.factor(recode(year,
@@ -254,7 +221,7 @@ stats_ftype <- stats_ftype %>% mutate( timestep = as.factor(recode(year,
                                                                    `2009`="9-17", 
                                                                    `2017`="17-21")))
 
-#join with management information
+#join with elevation information
 stats_elevation <- readRDS("data/processed/gap_features/stats_all_elevation.rds")
 # recode years to time steps for merges
 stats_elevation <- stats_elevation %>% mutate( timestep = as.factor(recode(year,
@@ -280,7 +247,7 @@ gap_clo_NP_91721<- gap_clo_NP_91721 %>% mutate(time = as.numeric(recode(timestep
 saveRDS(gap_clo_NP_91721, "data/processed/closure/gap_closure_elevation.rds") # store df to contrast gap formation and closure
 
 
-# ---- relabel Larch-Swiss stone pine and Dwarf mountain pine to one forest type class ---
+# ---- relabel forest types ----
 
 gap_clo_NP_91721 <- gap_clo_NP_91721 %>% mutate(forest_type = as.factor(recode(forest_type,
                                                                                `1`= "Beech",
@@ -294,7 +261,7 @@ gap_clo_NP_91721$forest_type <- factor(gap_clo_NP_91721$forest_type,levels=rev(l
 
 # Gap closure area summary
 gap_clo_NP_91721 %>%
-  summarise(sum_closure_area = sum(closure_area/10000),
+  summarise(sum_closure_area = sum(closure_area/10000), # /10000 to get hectar
             avg_clo_area_annual = mean(clo_area_sum_annual),
             sum_lateral_closure_area = sum(closure_area[closure_mechanism == "lateral closure"]/10000),
             sum_vertical_closure_area = sum(closure_area[closure_mechanism == "vertical closure"])/10000,
@@ -317,7 +284,7 @@ lateral_share_per_forest_type <- gap_clo_NP_91721 %>%
 
 
 
-# --- append lateral + vertical closure info (overall gap closure) to main data frame  ----
+# --- append lateral + vertical closure info (total gap closure) to main data frame  ----
 
 gap_clo_NP_91721$id <- as.numeric(paste0(gap_clo_NP_91721$gap_id,gap_clo_NP_91721$time))
 
@@ -386,7 +353,7 @@ average_closures_share <- gap_clo %>%
   mutate(share_lateral_on_total = `lateral closure`/`Total`)
 
 
-# for Bechtesgaden core zone mean closure shares
+# for Berchtesgaden core zone mean closure shares
 
 # forest_type      `lateral closure` `vertical closure` Total share_lateral_on_total  --- new/updated
 
@@ -505,7 +472,7 @@ ggplot(new_df_agg, aes(x = feature, y = clo_share_annual, fill = closure_mechani
 dev.off()
 
 
-#--- panel plot with gap size and forest type without reduced bins
+# --- panel plot with gap size and forest type without reduced bins
 
 forest_data <- select(gap_clo, -aspect,-elevation) # Drop the "aspect" and "elevation" column
 
@@ -543,15 +510,8 @@ My_Theme = theme(
   strip.text.y = element_text(size = 25),
   legend.position="top") 
 
+
 #  --- closure share per gap size 
-
-tiff("data/results/gap_closure/gap_closure_gap.size_box.tiff", units="in", width=12, height=8, res=300)
-ggplot(subset(gap_clo, closure_mechanism %in% "Total"), aes(x=gap.size , y=clo_share_annual, fill="green")) +
-  geom_boxplot(position=position_dodge(width=0.9)) +
-  theme_minimal()+ coord_flip()  +  scale_fill_brewer(palette="Dark2", name = "closure mechanism") + My_Theme +
-  labs(x = "gap size [ha]", y= "% of gap area closing annually", colour= "closure mechanism")+ guides(fill = FALSE)  
-dev.off()
-
 
 tiff("data/results/gap_closure/gap_closure_mechanism_gap.size_box.tiff", units="in", width=12, height=8, res=300)
 ggplot(gap_clo, aes(x=gap.size , y=clo_share_annual, fill=closure_mechanism)) +

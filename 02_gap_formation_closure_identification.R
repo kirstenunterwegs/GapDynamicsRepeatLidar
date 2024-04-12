@@ -1,9 +1,10 @@
 #######################################
 #
-# identifying expansion and closure areas
+# identifying gap formation and closure areas
 #
 ######################################
 
+# --- libraries
 
 library(dplyr)
 library(tidyr)
@@ -13,14 +14,15 @@ library(terra)
 
 # --- load gap layers ----
 
-gaps2009 <- rast("data/processed/gaps_final/berchtesgaden_2009_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
-gaps2017 <- rast("data/processed/gaps_final/berchtesgaden_2017_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
-gaps2021 <- rast("data/processed/gaps_final/berchtesgaden_2021_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
+gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
 
+gaps2009 <- gap_stack[[1]]
+gaps2017 <- gap_stack[[2]]
+gaps2021 <- gap_stack[[3]]
 
 #--- define functions ---
 
-# simplified function to identify gap expansion and gap closure
+# function to identify gap formation and gap closure
 
 gap_change_class <- function(gap_layer1, gap_layer2){
   exp_clo <- rast() #create empty raster to classify
@@ -34,28 +36,19 @@ gap_change_class <- function(gap_layer1, gap_layer2){
 } 
 
 
-common_extent <- intersect(intersect(ext(gaps2009), ext(gaps2017)), ext(gaps2021))
 
-gaps2009_aligned <- crop(gaps2009, common_extent)
-gaps2017_aligned <- crop(gaps2017, common_extent)
-gaps2021_aligned <- crop(gaps2021, common_extent)
-
-# gaps2009 <- crop(gaps2009, gaps2021, snap="near",mask=TRUE)
-# gaps2017 <-crop(gaps2017, gaps2021, snap="near",mask=TRUE)
-
-exp_clo_917 <- gap_change_class(gaps2009_aligned, gaps2017_aligned)
-exp_clo_1721 <- gap_change_class(gaps2017_aligned, gaps2021_aligned)
-exp_clo_921 <- gap_change_class(gaps2009_aligned, gaps2021_aligned)
+exp_clo_917 <- gap_change_class(gaps2009, gaps2017) # between 2009 and 2017
+exp_clo_1721 <- gap_change_class(gaps2017, gaps2021) # between 2017 and 2021
 
 
-terra::writeRaster(exp_clo_917, "data/processed/gap_change/formation_closure_917_cn2cr2_mmu400n8_filtered.tif")
-terra::writeRaster(exp_clo_1721, "data/processed/gap_change/formation_closure_1721_cn2cr2_mmu400n8_filtered.tif")
-terra::writeRaster(exp_clo_921, "data/processed/gap_change/formation_closure_921_cn2cr2_mmu400n8_filtered.tif")
+writeRaster(exp_clo_917, "data/processed/gap_change/formation_closure_917.tif")
+writeRaster(exp_clo_1721, "data/processed/gap_change/formation_closure_1721.tif")
+
 
 # --- extract vegetation growth in gap closure areas per time step ---
 
-exp_clo_917 <- rast("data/processed/gap_change/formation_closure_917_cn2cr2_mmu400n8_filtered.tif")
-exp_clo_1721 <- rast("data/processed/gap_change/formation_closure_1721_cn2cr2_mmu400n8_filtered.tif")
+# CHM cannot be provided, but resulting growth values within gap area
+# is provided in zenodo
 
 chm9 <- rast("data/processed/CHM_data/chm9_artifacts_masked.tif")
 chm17 <- rast("data/processed/CHM_data/chm17_artifacts_masked.tif")
@@ -72,7 +65,7 @@ diff1721 <- chm21 - chm17
 clo_917 <- classify(exp_clo_917, cbind(2, NA)) #replace 2=expansion with NA to get only closure areas
 clo_1721 <- classify(exp_clo_1721, cbind(2, NA)) #replace 2=expansion with NA to get only closure areas
 
-# extract vegetation growth in closure areas
+# extract vegetation growth in closure areas for the two respective time steps
 
 diff917 <- crop(diff917,clo_917 )
 clo_growth_917 <-mask(diff917, clo_917) 
@@ -81,5 +74,5 @@ diff1721 <- crop(diff1721, clo_1721)
 clo_growth_1721 <-mask(diff1721, clo_1721) 
 
 
-writeRaster(clo_growth_917 , "data/processed/closure/closure_area_growth_917.tif")
+writeRaster(clo_growth_917 , "data/processed/closure/closure_area_growth_917.tif") # data provided!
 writeRaster(clo_growth_1721 , "data/processed/closure/closure_area_growth_1721.tif")

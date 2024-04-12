@@ -1,55 +1,39 @@
-###########################################################################
+###################################################
 
-# Identifying number of and area covered by gaps in reserach area per year
+# Identifying number of and area covered by gaps 
+# per environmental feature
 
-##########################################################################
+##################################################
 
+# --- libraries
 
 library(dplyr)
 library(tidyr)
 library(terra)
-library(ggplot2)
 
 
+setwd("C:/Users/ge92vuh/Documents/Projects/GapDynamics/final_submission")
 # --- load layers ----
 
-gaps2009 <- rast("data/processed/gaps_final/berchtesgaden_2009_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
-gaps2017 <- rast("data/processed/gaps_final/berchtesgaden_2017_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
-gaps2021 <- rast("data/processed/gaps_final/berchtesgaden_2021_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
+gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
 
-# crop gaps to CHM 
-gaps2009 <- crop(gaps2009, gaps2021, snap="near",mask=TRUE) 
-gaps2017 <-crop(gaps2017, gaps2021, snap="near",mask=TRUE) 
-
-gap.stack <- c(gaps2009, gaps2017, gaps2021)
-
-#prepare layers to limit analysis to core zone, below 1800m and with forest type information
-
-# --- load NP information 
-
-foresttype <- rast("data/processed/environment_features/forest_type2020_reclass_1m.tif")
-management <- vect("data/raw/npb_zonierung_22_epsg25832.shp")
-elevation.below1800 <- rast("data/processed/environment_features/elevation_below1800_200steps.tif")
-aspect<-  rast("data/processed/environment_features/aspect_2021_classified_1m.tif")
+gaps2009 <- gap_stack[[1]]
+gaps2017 <- gap_stack[[2]]
+gaps2021 <- gap_stack[[3]]
 
 
-# exclude management zone
-core.zone <- subset(management, management$zone_id == 4, c(1:2))
+# convert gap stack to data frame 
 
-#mask down to reserach area
-gap.stack <- mask(gap.stack, core.zone)
-gap.stack <- mask(gap.stack, elevation.below1800)
-gap.stack <- mask(gap.stack, foresttype)
-
-
-writeRaster(gap.stack, "data/processed/gaps_final/gaps_masked_reserach_area_paper.tif")
-
-# convert masked gap stack to data frame & write to disk
 gap.stack.df <- as.data.frame(gap.stack)
-saveRDS(gap.stack.df,"data/processed/gaps_final/gaps_masked_reserach_area_paper.df.rds" )
-
-gap.stack.df <- readRDS("data/processed/gaps_final/gaps_masked_reserach_area_paper.df.rds")
 names(gap.stack.df) <- c("gaps9", "gaps17", "gaps21")
+
+# environmental features
+
+environment <- rast("data/processed/environment_features/stack_environment_studyarea.tif")
+
+foresttype <- environment[[1]]
+elevation <- environment[[2]]
+aspect <- environment[[3]]
 
 # --- summarize number & area of gaps:
 
@@ -80,33 +64,14 @@ sum(gap_counts$number_gaps) # 11331
 # ---- assign Gap environmental features ----
 
 
-# load & crop chm cropped to research area
-
-chm9 <- rast("data/processed/CHM_data/chm9_artifacts_masked.tif")
-chm17 <- rast("data/processed/CHM_data/chm17_artifacts_masked.tif")
-chm21 <- rast("data/processed/CHM_data/chm21_artifacts_masked.tif")
-
-names(gap.stack) <- c("gaps9", "gaps17", "gaps21")
-
-crop_chm <- function(chm){
-  chm <- crop(chm, gap.stack$gaps9)
-  chm <- mask(chm, core.zone)
-  chm <- mask(chm, elevation.below1800)
-  chm <- mask(chm, foresttype)
-}
-
-chm9 <- crop_chm(chm9)
-chm17 <- crop_chm(chm17)
-chm21 <- crop_chm(chm21)
-
 
 # --- define functions -----
 
 # ---- forest type
 
 #function to assign forest type
-getForestType <- function(gap_chm) {
-  x <-gap_chm %>% group_by(ID, ftype) %>% #count pixels per ftype per gap
+getForestType <- function(gap_df) {
+  x <-gap_df %>% group_by(ID, ftype) %>% #count pixels per ftype per gap
     summarize(count = n())
   #identify dominating forest type in gap area
   xx <- data_frame()
@@ -125,48 +90,25 @@ getForestType <- function(gap_chm) {
 }
 
 
-Gap_Stats_ftype <- function (gap_layer, chm_layer, foresttype, year) 
+Gap_Stats_ftype <- function (gap_layer, foresttype, year) 
 {  t <- Sys.time()
+
 gap_list <- data.frame(terra::freq(gap_layer))
-gap_list$count <- gap_list$count * terra::res(chm_layer)[1]^2
+gap_list$count <- gap_list$count * terra::res(gap_layer)[1]^2
 gap_list <- gap_list[!is.na(gap_list[, 1]), ]
 print("convert gaps to df + area: "); print(Sys.time()-t); t <- Sys.time()
+
 # extract raster values per gap
-gap_chm <- as.data.frame(c(gap_layer, chm_layer, foresttype), na.rm = FALSE)
-names(gap_chm) <- c("ID", "chm_values", "ftype")
-gap_chm <- gap_chm[!is.na(gap_chm$ID),]# delete pixels without any gap
-print("extract values for gaps: "); print(Sys.time()-t); t <- Sys.time()
-# calculate gap statistics
-gap_list$chm_max <- as.data.frame(gap_chm %>% group_by(ID) %>% #create df and take second column
-                                    summarize(chm_max = max(chm_values, na.rm=TRUE)))[,2]
+gap_df <- as.data.frame(c(gap_layer, foresttype), na.rm = FALSE)
+names(gap_df) <- c("ID", "ftype")
 
-gap_list$chm_min <- as.data.frame(gap_chm %>% group_by(ID) %>% 
-                                    summarize(chm_min = round(min(chm_values, na.rm=TRUE))))[,2]
-
-gap_list$chm_mean <- as.data.frame(gap_chm %>%group_by(ID) %>% 
-                                     summarize(chm_mean = mean(chm_values, na.rm=TRUE)))[,2]
-
-gap_list$chm_sd <- as.data.frame(gap_chm %>% group_by(ID) %>% 
-                                   summarize(chm_mean = stats::sd(chm_values, na.rm=TRUE)))[,2]
-
-gap_list$chm_range <- round(gap_list$chm_max - gap_list$chm_min, 2)
-print("calculate basic stats: "); print(Sys.time()-t); t <- Sys.time()
-
-# gap_polygon <- as.polygons(gap_layer)
-# gap_list$perimeter <- perim(gap_polygon)#add perimeter  
-# 
-# print("get perimeter: "); print(Sys.time()-t); t <- Sys.time()
-
-gap_list$ftype <- as.data.frame(getForestType(gap_chm))[,2]
+gap_list$ftype <- as.data.frame(getForestType(gap_df))[,2]
 print("get forest type: "); print(Sys.time()-t); t <- Sys.time()
 
 gap_list$year <- as.factor(year)
-
 gap_list <- gap_list[ , !names(gap_list) %in% c("layer")]
 
-colnames(gap_list) <- c("gap_id", "gap_area", 
-                        "chm_max", "chm_min", "chm_mean", "chm_sd"
-                        ,"chm_range", "forest_type", "year") #"perimeter", 
+colnames(gap_list) <- c("gap_id", "gap_area", "forest_type", "year")
 print("finish df wrangling and labeling: "); print(Sys.time()-t); t <- Sys.time()
 return(gap_list)
 }
@@ -175,8 +117,8 @@ return(gap_list)
 #---elevation 
 
 #function to assign elevation class
-getElevation <- function(gap_chm) {
-  x <-gap_chm %>% group_by(ID, elevation) %>% #count pixels per elevation class per gap
+getElevation <- function(gap_df) {
+  x <-gap_df %>% group_by(ID, elevation) %>% #count pixels per elevation class per gap
     summarize(count = n())
   #identify dominating elevation in gap area
   xx <- data_frame()
@@ -204,48 +146,26 @@ getElevation <- function(gap_chm) {
 }
 
 
-Gap_Stats_elevation <- function (gap_layer, chm_layer, dtm_class, year) 
+Gap_Stats_elevation <- function (gap_layer, dtm_class, year) 
 {  t <- Sys.time()
 gap_list <- data.frame(terra::freq(gap_layer))
-gap_list$count <- gap_list$count * terra::res(chm_layer)[1]^2
+gap_list$count <- gap_list$count * terra::res(gap_layer)[1]^2
 gap_list <- gap_list[!is.na(gap_list[, 1]), ]
 print("convert gaps to df + area: "); print(Sys.time()-t); t <- Sys.time()
+
 # extract raster values per gap
-gap_chm <- as.data.frame(c(gap_layer, chm_layer, dtm_class), na.rm = FALSE)
-names(gap_chm) <- c("ID", "chm_values", "elevation")
-gap_chm <- gap_chm[!is.na(gap_chm$ID),]# delete pixels without any gap
+gap_df <- as.data.frame(c(gap_layer, dtm_class), na.rm = FALSE)
+names(gap_df) <- c("ID", "elevation")
+gap_df <- gap_df[!is.na(gap_df$ID),]# delete pixels without any gap
 print("extract values for gaps: "); print(Sys.time()-t); t <- Sys.time()
-# calculate gap statistics
-gap_list$chm_max <- as.data.frame(gap_chm %>% group_by(ID) %>% #create df and take second column
-                                    summarize(chm_max = max(chm_values, na.rm=TRUE)))[,2]
 
-gap_list$chm_min <- as.data.frame(gap_chm %>% group_by(ID) %>% 
-                                    summarize(chm_min = round(min(chm_values, na.rm=TRUE))))[,2]
-
-gap_list$chm_mean <- as.data.frame(gap_chm %>%group_by(ID) %>% 
-                                     summarize(chm_mean = mean(chm_values, na.rm=TRUE)))[,2]
-
-gap_list$chm_sd <- as.data.frame(gap_chm %>% group_by(ID) %>% 
-                                   summarize(chm_mean = stats::sd(chm_values, na.rm=TRUE)))[,2]
-
-gap_list$chm_range <- round(gap_list$chm_max - gap_list$chm_min, 2)
-print("calculate basic stats: "); print(Sys.time()-t); t <- Sys.time()
-
-# gap_polygon <- as.polygons(gap_layer)
-# gap_list$perimeter <- perim(gap_polygon)#add perimeter  
-# 
-# print("get perimeter: "); print(Sys.time()-t); t <- Sys.time()
-
-gap_list$elevation <- as.data.frame(getElevation(gap_chm))[,2]
+gap_list$elevation <- as.data.frame(getElevation(gap_df))[,2]
 print("get elevation: "); print(Sys.time()-t); t <- Sys.time()
 
 gap_list$year <- as.factor(year)
-
 gap_list <- gap_list[ , !names(gap_list) %in% c("layer")]
 
-colnames(gap_list) <- c("gap_id", "gap_area", 
-                        "chm_max", "chm_min", "chm_mean", "chm_sd"
-                        ,"chm_range",  "elevation", "year") #"perimeter",
+colnames(gap_list) <- c("gap_id", "gap_area","elevation", "year") 
 print("finish df wrangling and labeling: "); print(Sys.time()-t); t <- Sys.time()
 return(gap_list)
 }
@@ -254,8 +174,8 @@ return(gap_list)
 # ---- aspect 
 
 #function to assign elevation class
-getAspect <- function(gap_chm) {
-  x <-gap_chm %>% group_by(ID, aspect) %>% #count pixels per aspect class per gap
+getAspect <- function(gap_df) {
+  x <-gap_df %>% group_by(ID, aspect) %>% #count pixels per aspect class per gap
     summarize(count = n())
   #identify dominating elevation in gap area
   xx <- data_frame()
@@ -279,48 +199,25 @@ getAspect <- function(gap_chm) {
 }
 
 
-Gap_Stats_aspect <- function (gap_layer, chm_layer, ascpect_class, year) 
+Gap_Stats_aspect <- function (gap_layer, ascpect_class, year) 
 {  t <- Sys.time()
 gap_list <- data.frame(terra::freq(gap_layer))
-gap_list$count <- gap_list$count * terra::res(chm_layer)[1]^2
+gap_list$count <- gap_list$count * terra::res(gap_layer)[1]^2
 gap_list <- gap_list[!is.na(gap_list[, 1]), ]
 print("convert gaps to df + area: "); print(Sys.time()-t); t <- Sys.time()
 # extract raster values per gap
-gap_chm <- as.data.frame(c(gap_layer, chm_layer, ascpect_class), na.rm = FALSE)
-names(gap_chm) <- c("ID", "chm_values", "aspect")
-gap_chm <- gap_chm[!is.na(gap_chm$ID),]# delete pixels without any gap
+gap_df <- as.data.frame(c(gap_layer, ascpect_class), na.rm = FALSE)
+names(gap_df) <- c("ID",  "aspect")
+gap_df <- gap_df[!is.na(gap_df$ID),]# delete pixels without any gap
 print("extract values for gaps: "); print(Sys.time()-t); t <- Sys.time()
-# calculate gap statistics
-gap_list$chm_max <- as.data.frame(gap_chm %>% group_by(ID) %>% #create df and take second column
-                                    summarize(chm_max = max(chm_values, na.rm=TRUE)))[,2]
 
-gap_list$chm_min <- as.data.frame(gap_chm %>% group_by(ID) %>% 
-                                    summarize(chm_min = round(min(chm_values, na.rm=TRUE))))[,2]
-
-gap_list$chm_mean <- as.data.frame(gap_chm %>%group_by(ID) %>% 
-                                     summarize(chm_mean = mean(chm_values, na.rm=TRUE)))[,2]
-
-gap_list$chm_sd <- as.data.frame(gap_chm %>% group_by(ID) %>% 
-                                   summarize(chm_mean = stats::sd(chm_values, na.rm=TRUE)))[,2]
-
-gap_list$chm_range <- round(gap_list$chm_max - gap_list$chm_min, 2)
-print("calculate basic stats: "); print(Sys.time()-t); t <- Sys.time()
-
-# gap_polygon <- as.polygons(gap_layer)
-# gap_list$perimeter <- perim(gap_polygon)#add perimeter  
-# 
-# print("get perimeter: "); print(Sys.time()-t); t <- Sys.time()
-
-gap_list$aspect <- as.data.frame(getAspect(gap_chm))[,2]
+gap_list$aspect <- as.data.frame(getAspect(gap_df))[,2]
 print("get aspect: "); print(Sys.time()-t); t <- Sys.time()
 
 gap_list$year <- as.factor(year)
-
 gap_list <- gap_list[ , !names(gap_list) %in% c("layer")]
 
-colnames(gap_list) <- c("gap_id", "gap_area", 
-                        "chm_max", "chm_min", "chm_mean", "chm_sd"
-                        ,"chm_range",  "aspect", "year") #"perimeter",
+colnames(gap_list) <- c("gap_id", "gap_area", "aspect", "year") 
 print("finish df wrangling and labeling: "); print(Sys.time()-t); t <- Sys.time()
 return(gap_list)
 }
@@ -334,10 +231,7 @@ stats_ftype_2021 <- Gap_Stats_ftype(gap.stack$gaps21, chm21, foresttype, "2021")
 
 
 stats_all_ftype <- rbind(stats_ftype_2009, stats_ftype_2017, stats_ftype_2021)
-# stats_all_ftype$pa_ratio <- stats_all_ftype$perimeter/stats_all_ftype$gap_area #calculate perimeter/area ratio
-# stats_all_ftype$shape.index <- stats_all_ftype$perimeter/ (2*(pi*stats_all_ftype$gap_area)^0.5)
 stats_all_ftype$gap_area_ha <- stats_all_ftype$gap_area/10000 #convert area to ha
-#drop gaps < 400 m2 (emerge through masking of research area, as large gaps transcending management area or elevation lines get cut)
 stats_all_ftype <- stats_all_ftype[stats_all_ftype$gap_area >= 400,]
 
 saveRDS(stats_all_ftype, "data/processed/gap_features/stats_all_ftype.rds")
@@ -345,15 +239,12 @@ saveRDS(stats_all_ftype, "data/processed/gap_features/stats_all_ftype.rds")
 
 #------- calculate gap stats per elevation
 
-stats_elevation_2009<- Gap_Stats_elevation(gap.stack$gaps9, chm9, elevation.below1800, "2009")
-stats_elevatione_2017 <- Gap_Stats_elevation(gap.stack$gaps17, chm17, elevation.below1800, "2017")
-stats_elevation_2021 <- Gap_Stats_elevation(gap.stack$gaps21, chm21, elevation.below1800, "2021")
+stats_elevation_2009<- Gap_Stats_elevation(gap.stack$gaps9, chm9, elevation, "2009")
+stats_elevatione_2017 <- Gap_Stats_elevation(gap.stack$gaps17, chm17, elevation, "2017")
+stats_elevation_2021 <- Gap_Stats_elevation(gap.stack$gaps21, chm21, elevation, "2021")
 
 stats_all_elevation <- rbind(stats_elevation_2009, stats_elevatione_2017, stats_elevation_2021)
-# stats_all_elevation$pa_ratio <- stats_all_elevation$perimeter/stats_all_elevation$gap_area #calculate perimeter/area ratio
-# stats_all_elevation$shape.index <- stats_all_elevation$perimeter/ (2*(pi*stats_all_elevation$gap_area)^0.5)
 stats_all_elevation$gap_area_ha <- stats_all_elevation$gap_area/10000 #convert area to ha
-#drop gaps < 400 m2 (emerge through masking of research area, as large gaps transcending management area or elevation lines get cut)
 stats_all_elevation <- stats_all_elevation[stats_all_elevation$gap_area >= 400,]
 
 stats_all_elevation$elevation <- factor(stats_all_elevation$elevation , levels=c("600-800", "800-1000", "1000-1200",
@@ -369,10 +260,7 @@ stats_aspect_2017 <- Gap_Stats_aspect(gap.stack$gaps17, chm17, aspect, "2017")
 stats_aspect_2021 <- Gap_Stats_aspect(gap.stack$gaps21, chm21, aspect, "2021")
 
 stats_all_aspect <- rbind(stats_aspect_2009, stats_aspect_2017, stats_aspect_2021)
-# stats_all_aspect$pa_ratio <- stats_all_aspect$perimeter/stats_all_aspect$gap_area #calculate perimeter/area ratio
-# stats_all_aspect$shape.index <- stats_all_aspect$perimeter/ (2*(pi*stats_all_aspect$gap_area)^0.5)
 stats_all_aspect$gap_area_ha <- stats_all_aspect$gap_area/10000 #convert area to ha
-#drop gaps < 400 m2 (emerge through masking of research area, as large gaps transcending management area or elevation lines get cut)
 stats_all_aspect <- stats_all_aspect[stats_all_aspect$gap_area >= 400,]
 
 saveRDS(stats_all_aspect, "data/processed/gap_features/stats_all_aspect.rds")

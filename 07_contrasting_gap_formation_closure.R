@@ -6,13 +6,13 @@
 ######################################
 
 
-# load libaries
+# --- load libraries
 
 library(dplyr)
 library(tidyr)
 
 
-# load data
+# --- load data
 
 area_share_class <- readRDS("data/processed/environment_features/area_share_per_class_studyarea.rds")
 creation <- readRDS("data/processed/creation/gap_creation_elevation.rds")
@@ -53,12 +53,15 @@ closure<- closure %>%
   summarise(gap.closure.ha = sum(gap.closure.ha))
 
 
-# merge gap formation and closure
+
+# --- merge gap formation and closure
+
 creation.closure <- merge(creation, closure, by = "elevation")
 
 # merge with area share information
 creation.closure.scaled <- merge(creation.closure, area_share_class[,c("class.name", "class_area_perc", "total_area", "total_area_category" )],
                                  by.x = "elevation", by.y = "class.name", all.x = TRUE)
+
 
 
 # --- calculate overall gap formation and closure for research area

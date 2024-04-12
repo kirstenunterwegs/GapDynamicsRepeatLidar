@@ -19,11 +19,13 @@ library(sf)
 
 # --- load layers ----
 
-gaps2009 <- rast("data/processed/gaps_final/berchtesgaden_2009_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
-gaps2017 <- rast("data/processed/gaps_final/berchtesgaden_2017_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
+gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
 
+gaps2009 <- gap_stack[[1]]
+gaps2017 <- gap_stack[[2]]
+gaps2021 <- gap_stack[[3]]
 
-# create 1km grid across study area for gap boundary  delineation
+# create 1km grid across study area for gap boundary delineation by grid
 aoi <- vect("data/raw/npb_zonierung_22_epsg25832.shp")
 
 grid <- st_make_grid(aoi,
@@ -89,7 +91,6 @@ r$overwrite <- TRUE
 boundaries.2017 <- do.call(merge, r) # merge all tiles into one rasterlayer
 
 writeRaster(boundaries.2017, "data/processed/closure/gap_boundaries_2017.tif")
-#reprojecting the boundary layer in QGis to crs 25832
 
 
 
@@ -101,16 +102,16 @@ clo_growth_917 <- rast("data/processed/closure/closure_area_growth_917.tif")
 clo_growth_1721 <- rast("data/processed/closure/closure_area_growth_1721.tif")
 
 #load gap boundaries
+# 
+# boundaries.2009 <- rast("data/processed/closure/gap_boundaries_2009.tif")
+# boundaries.2017 <- rast("data/processed/closure/gap_boundaries_2017.tif")
 
-boundaries.2009 <- rast("data/processed/closure/gap_boundaries_2009_25832.tif")
-boundaries.2017 <- rast("data/processed/closure/gap_boundaries_2017_25832.tif")
-
-#adjust extents
+# adjust extents
 clo_growth_917 <- crop(clo_growth_917, boundaries.2009)
 clo_growth_1721 <- crop(clo_growth_1721, boundaries.2017)
 
 
-#  -- need to differ between processing both time steps due to different growing periods
+#  -- need to differ classification for both time steps due to different growing periods
 
 gap_closure_mechanism917 <- function(diff_closure_layer, boundary_layer){       # 0.5 m * 8 = 4m height gain
 

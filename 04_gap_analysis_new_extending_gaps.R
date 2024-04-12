@@ -4,6 +4,7 @@
 #
 #####################################
 
+# --- libraries
 
 library(plyr)
 library(dplyr)
@@ -14,65 +15,44 @@ require(scales)
 
 # --- load classified Gap layers of new and expanding gaps ----
 
-gaps2017.id <- rast("data/processed/gaps_final/berchtesgaden_2017_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
-gaps2021.id <- rast("data/processed/gaps_final/berchtesgaden_2021_chm_1m_patchid_cn2cr2_mmu400n8_filtered_woheight.tif")
+gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
 
+# gap ID layer
+gaps2017.id <- gap_stack[[2]]
+gaps2021.id <- gap_stack[[3]]
+
+# gap classification of new or expanding gaps
 gaps2017 <- rast("data/processed/creation/gaps2017_new_extended_stable.tif")
 gaps2021 <- rast("data/processed/creation/gaps2021_new_extended_stable.tif")
 
-# crop gaps ID
 
-gaps2017.id <-crop(gaps2017.id, gaps2017, snap="near",mask=TRUE) 
-gaps2021.id <-crop(gaps2021.id, gaps2021, snap="near",mask=TRUE) 
+# load expansion and closure layer and extract only expansion areas
 
-#load expansion and closure layer and extract only expansion areas
-
-exp_clo917 <- rast("data/processed/gap_change/formation_closure_917_cn2cr2_mmu400n8_filtered.tif") 
+exp_clo917 <- rast("data/processed/gap_change/formation_closure_917.tif") 
 exp917 <- classify(exp_clo917, cbind(1, NA)) #replace 1=closure with NA to get only expansion areas
 
-exp_clo1721 <- rast("data/processed/gap_change/formation_closure_1721_cn2cr2_mmu400n8_filtered.tif") # doesn't load - why?
+exp_clo1721 <- rast("data/processed/gap_change/formation_closure_1721.tif")
 exp1721 <- classify(exp_clo1721, cbind(1, NA)) #replace 1=closure with NA to get only expansion areas
 
-# --- load NP information 
+# --- environmental information 
 
-foresttype <- rast("data/processed/environment_features/forest_type2020_reclass_1m.tif")
-management <- vect("data/raw/npb_zonierung_22_epsg25832.shp")
-aspect<-  rast("data/processed/environment_features/aspect_2021_classified_1m.tif")
-elevation.below1800 <- rast("data/processed/environment_features/elevation_below1800_200steps.tif")
-closed.forest <- vect("data/raw/closed_forest_epsg25832.shp")
+environment <- rast("data/processed/environment_features/stack_environment_studyarea.tif")
 
-# extract core zone to exclude management zone
-core.zone <- subset(management, management$zone_id == 4, c(1:2))
+foresttype <- environment[[1]]
+elevation <- environment[[2]]
+aspect <- environment[[3]]
 
-
-# crop all layers to same extent
-
-gaps2017.id <- crop(gaps2017.id, elevation.below1800)
-gaps2017<- crop(gaps2017, elevation.below1800)
-
-gaps2021.id <- crop(gaps2021.id, elevation.below1800)
-gaps2021<- crop(gaps2021, elevation.below1800)
 
 # --- stack gap information and crop it
 
 #2017
 
-stack2017 <- c(gaps2017.id, gaps2017, exp917, foresttype , elevation.below1800, aspect)
-names(stack2017) <- c("gap.id", "new_extended", "expansion", "forest_type", "elevation", "aspect")
+gap_stack_2017 <- c(gaps2017.id, gaps2017, exp917, foresttype , elevation, aspect)
+names(gap_stack_2017) <- c("gap.id", "new_extended", "expansion", "forest_type", "elevation", "aspect")
 
-stack2017 <- mask(stack2017, foresttype)
-stack2017 <- mask(stack2017, core.zone)
-stack2017 <- mask(stack2017, closed.forest)
-stack2017 <- mask(stack2017, elevation.below1800)
-
-writeRaster(stack2017, "data/processed/creation/stack.2017.all.gap.information.expansion.tif")
-gap_stack_2017 <- rast("data/processed/creation/stack.2017.all.gap.information.expansion.tif")
-
-df <- as.data.frame(gap_stack_2017, na.rm = FALSE) 
+df <- as.data.frame(gap_stack_2017, na.rm = FALSE) # takes some time!, heavy on RAM
 
 df1 <- df[!is.na(df$gap.id),] #expansion could only take place where there is a gap now, hence reduction of df to gap.id includes all expansion
-# df1 <- df1[!is.na(df1$forest_type),] # exclude all areas with no forest type information
-# df1 <- df1[!is.na(df1$elevation),]# exclude all areas > 1800 m (NA in this case, as it was re-coded above) 
 
 write_rds(df1, "data/processed/creation/stack_2017_new_exp_df.rds")
 df1 <- readRDS( "data/processed/creation/stack_2017_new_exp_df.rds")
@@ -80,28 +60,18 @@ df1 <- readRDS( "data/processed/creation/stack_2017_new_exp_df.rds")
 
 #2021
 
-stack21 <- c(gaps2021.id, gaps2021, exp1721, foresttype, elevation.below1800, aspect)
-names(stack21) <- c("gap.id", "new_extended", "expansion", "forest_type", "elevation", "aspect")
+gap_stack_2021 <- c(gaps2021.id, gaps2021, exp1721, foresttype, elevation, aspect)
+names(gap_stack_2021) <- c("gap.id", "new_extended", "expansion", "forest_type", "elevation", "aspect")
 
-stack21 <- mask(stack21, foresttype)
-stack21 <- mask(stack21, core.zone)
-stack21 <- mask(stack21, closed.forest)
-stack21 <- mask(stack21, elevation.below1800)
-
-writeRaster(stack21, "data/processed/creation/stack.2021.all.gap.information.expansion.tif")
-gap_stack_2021 <- rast("data/processed/creation/stack.2021.all.gap.information.expansion.tif")
-
-df <- as.data.frame(gap_stack_2021, na.rm = FALSE) 
+df <- as.data.frame(gap_stack_2021, na.rm = FALSE) # takes some time!, heavy on RAM
 
 df2 <- df[!is.na(df$gap.id),] #expansion could only take place where there is a gap now, hence reduction of df to gap.id includes all expansion
-# df2 <- df2[!is.na(df2$forest_type),] # exclude all areas with no forest type information
-# df2 <- df2[!is.na(df2$elevation),]# exclude all areas > 1800 m (na in this case, as it was recoded above) 
 
 write_rds(df2, "data/processed/creation/stack_2021_new_exp_df.rds")
 df2<- readRDS("data/processed/creation/stack_2021_new_exp_df.rds")
 
 
-# --- calculate features per gap(.id)
+# --- calculate area and expansion area per gap(.id)
 
 df1 <- readRDS( "data/processed/creation/stack_2017_new_exp_df.rds")
 df2<- readRDS("data/processed/creation/stack_2021_new_exp_df.rds")
@@ -111,7 +81,7 @@ gap_features_917 <- df1 %>% group_by(gap.id) %>%
   summarise(area.ha = n()/10000,
             exp.area.ha = (sum(expansion, na.rm = T)/2)/10000,
             exp.share = round(exp.area.ha/area.ha,3),
-            new.exp = unique(new_extended)) %>% #add aspect, elevation and forest type
+            new.exp = unique(new_extended)) %>% 
   mutate(new.exp = recode(new.exp, 
                           '0' = "new", 
                           '1' = "expanding",
@@ -121,21 +91,21 @@ gap_features_1721 <- df2 %>% group_by(gap.id) %>%
   summarise(area.ha = n()/10000,
             exp.area.ha = (sum(expansion, na.rm = T)/2)/10000,
             exp.share = round(exp.area.ha/area.ha,3),
-            new.exp = unique(new_extended)) %>% #add aspect, elevation and forest type
+            new.exp = unique(new_extended)) %>% 
   mutate(new.exp = recode(new.exp, 
                           '0' = "new", 
                           '1' = "expanding",
                           '2' = "stable"))
 
 
-# --- functions to identify major forest type, elevation and aspect per gap and hence expansion ---
+# --- functions to identify major forest type, elevation and aspect per gap (and hence expansion) ---
 
-getForestType <- function(gap_chm) {
-  x <-gap_chm %>% group_by(gap.id, forest_type) %>% #count pixels per ftype per gap
+getForestType <- function(gap_df) {
+  x <-gap_df %>% group_by(gap.id, forest_type) %>% #count pixels per ftype per gap
     summarize(count = n())
   #identify dominating forest type in gap area
   xx <- data_frame()
-  for (i in unique(gap_chm$gap.id)) {
+  for (i in unique(gap_df$gap.id)) {
     a <- x[x$gap.id == i,]        #subset to one ID
     a <- a[order(-a$count),]  #order descending according to pixel counts   
     if(nrow(a) == 1) {        #if only one entry = one forest type assign that one to ID
@@ -155,8 +125,8 @@ getForestType <- function(gap_chm) {
 }
 
 #function to assign elevation class
-getElevation <- function(gap_chm) {
-  x <-gap_chm %>% group_by(gap.id, elevation) %>% #count pixels per elevation class per gap
+getElevation <- function(gap_df) {
+  x <-gap_df %>% group_by(gap.id, elevation) %>% #count pixels per elevation class per gap
     summarize(count = n())
   #identify dominating elevation in gap area
   xx <- data_frame()
@@ -185,8 +155,8 @@ getElevation <- function(gap_chm) {
 
 
 #function to assign elevation class
-getAspect <- function(gap_chm) {
-  x <-gap_chm %>% group_by(gap.id, aspect) %>% #count pixels per aspect class per gap
+getAspect <- function(gap_df) {
+  x <-gap_df %>% group_by(gap.id, aspect) %>% #count pixels per aspect class per gap
     summarize(count = n())
   #identify dominating elevation in gap area
   xx <- data_frame()
@@ -236,16 +206,12 @@ gap_features_1721 <- merge(gap_features_1721, aspect[,c("gap.id","aspect")], by 
 saveRDS(gap_features_1721,"data/processed/creation/gap_features_new_expanding_1721.rds")
 
 
-# analyse new and expanding gaps ----------------------------------------------------------
-
-gap_features_917 <- readRDS("data/processed/creation/gap_features_new_expanding_917.rds")
-gap_features_1721 <- readRDS("data/processed/creation/gap_features_new_expanding_1721.rds")
+# ------- analyse new and expanding gaps ---------------------------------------
 
 gap_features_1721$year <- as.factor("17-21")
 gap_features_917$year <- as.factor("9-17")
 
-gap_features921 <- rbind(gap_features_917, gap_features_1721)
-gap_features921 <- gap_features921[gap_features921$elevation != "1800-2000",]
+gap_features921 <- rbind(gap_features_917, gap_features_1721) # combine both timesteps
 gap_features921 <- gap_features921[gap_features921$area.ha >= 0.04,] #delete gaps smaller than 400m2, as they emerged out of the croping of the reserach area
 
 
@@ -361,8 +327,8 @@ gap_masked_research <- mask(gap_stack_2017.closed$forest_type, gap_stack_2017.cl
 
 random_gaps <- spatSample(gap_masked_research, size=300,method = "random", replace=FALSE, as.points=TRUE, na.rm=TRUE )
 
-writeRaster(gap_masked_research, "data/processed/creation/distance_newgap/sample_area_gapmasked_2017.tif", overwrite=T)
-writeVector(random_gaps, "data/processed/creation/distance_newgap/random_new_gap.gpkg")
+# writeRaster(gap_masked_research, "data/processed/creation/distance_newgap/sample_area_gapmasked_2017.tif")
+# writeVector(random_gaps, "data/processed/creation/distance_newgap/random_new_gap.gpkg")
 
 # calculate distances:
 
@@ -427,7 +393,7 @@ gap.creation <- gap_features921 %>% group_by(new.exp, year) %>%
 
 saveRDS(gap.creation, "data/processed/creation/gap_creation_final.rds" )
 
-#--------- area scaling
+#--------- area scaling to compare rates per feature
 
 # ---load  area shares for scaling
 area_share_class <- readRDS("data/processed/environment_features/area_share_per_class_studyarea.rds")
@@ -462,7 +428,7 @@ gap.creation.ftype <- gap_features921 %>% group_by(new.exp, year, forest_type) %
 
 #----  area scaling median+quantiles
 
-gap.creation.ftype.scaled <- gap.creation.ftype[,c("new.exp", "forest_type", "median", "q5", "q95", "q2.5", "q97.5")]
+gap.creation.ftype.scaled <- gap.creation.ftype[,c("new.exp", "forest_type", "median", "q2.5", "q97.5")]
 gap.creation.ftype.scaled <- gap.creation.ftype.scaled[!duplicated(gap.creation.ftype.scaled), ]
 
 #merge with area share information
@@ -524,6 +490,7 @@ gap.creation.elevation$elevation <- factor(gap.creation.elevation$elevation,leve
 
 saveRDS(gap.creation.elevation, "data/processed/creation/gap_creation_elevation.rds")
 
+
 # --------------------------------------------------- graphs
 
 
@@ -579,7 +546,6 @@ ggplot(gap_features921, aes(x=exp.area.ha, fill=factor(new.exp))) + geom_density
   scale_fill_colorblind()+
   labs( x="Size of gap formation area in log10 (ha)", y ="Density") +facet_wrap(~year)
 dev.off()
-
 
 
 
