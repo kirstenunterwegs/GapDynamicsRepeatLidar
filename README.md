@@ -4,7 +4,7 @@ This repository holds code for running the analysis of forest gap dynamics (gap 
 
 Krüger, K., Senf, C., Jucker, T., Pflugmacher, D., Seidl, R. (2024). Gap expansion is the dominant driver of canopy openings in a temperate mountain forest landscape. Journal of Ecology. (link)
 
-The gap layer generated and used for the analysis in this reserach can be obtained under the following link: (zenodo link)
+The gap layer generated and used for the analysis  in this reserach as well as further auxiliary data can be obtained under the following link: (zenodo link)
 
 ## platforms
 
@@ -13,6 +13,5 @@ software used for development and implementation : R version 4.3.3
 ## Directory structure and files:
 
 - `data/`: folder containing all input and output data as well as intermediate data layer
-- `data/raw/`: Inputs and project files used in the analysis. Gap layer are available under the above stated zenodo repository.
-- `data/processed/`: Any data altered from its raw format. Is dubsivided into a folder containing the gap layers (gaps_final), environmental variables (environment_features), data around gap formation (creation) and gap closure (closure).
+- `data/processed/`: Any data altered from its raw format. Is dubsivided into a folder containing the gap layers (gaps_final), environmental variables (environment_features), extraxted environmnetal features per gap (gap_features), data around gap formation (creation) and gap closure (closure). All data used to reproduce the results are available, all other layers can be generated with the code provided in this repository.
 - `data/results/`: Figures displaying analysis results
