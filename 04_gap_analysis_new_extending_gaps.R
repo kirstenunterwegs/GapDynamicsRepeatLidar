@@ -154,11 +154,11 @@ getElevation <- function(gap_df) {
 }
 
 
-#function to assign elevation class
+#function to assign aspect class
 getAspect <- function(gap_df) {
   x <-gap_df %>% group_by(gap.id, aspect) %>% #count pixels per aspect class per gap
     summarize(count = n())
-  #identify dominating elevation in gap area
+  #identify dominating aspect in gap area
   xx <- data_frame()
   for (i in unique(x$gap.id)) {
     a <- x[x$gap.id == i,]        #subset to one ID
@@ -212,7 +212,7 @@ gap_features_1721$year <- as.factor("17-21")
 gap_features_917$year <- as.factor("9-17")
 
 gap_features921 <- rbind(gap_features_917, gap_features_1721) # combine both timesteps
-gap_features921 <- gap_features921[gap_features921$area.ha >= 0.04,] #delete gaps smaller than 400m2, as they emerged out of the croping of the reserach area
+gap_features921 <- gap_features921[gap_features921$area.ha >= 0.04,] #delete gaps smaller than 400m2, as they emerged out of the cropping of the reserach area
 
 
 # exclude stable/shrinking gaps for the analysis

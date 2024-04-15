@@ -26,7 +26,7 @@ gaps2017 <- gap_stack[[2]]
 gaps2021 <- gap_stack[[3]]
 
 # create 1km grid across study area for gap boundary delineation by grid
-aoi <- vect("data/raw/npb_zonierung_22_epsg25832.shp")
+aoi <- vect("data/processed/closure/bdg_np_border.gpkg")
 
 grid <- st_make_grid(aoi,
                      cellsize= 1000, # 1km
