@@ -24,17 +24,26 @@ gaps2021 <- gap_stack[[3]]
 
 # function to identify gap formation and gap closure
 
+
 gap_change_class <- function(gap_layer1, gap_layer2){
-  exp_clo <- rast() #create empty raster to classify
-  ext(exp_clo) <- ext(gap_layer1)
-  res(exp_clo) <- res(gap_layer1)
-  crs(exp_clo) <- crs(gap_layer1)
-  # classify change group
-  exp_clo[gap_layer1 >0  & is.na(gap_layer2) ] <- 1 #gap closure
-  exp_clo[is.na(gap_layer1) & gap_layer2 >0] <- 2 #gap expansion
+  # Replace NA values with a placeholder (-9999) temporarily
+  gap_layer1[is.na(gap_layer1)] <- -9999
+  gap_layer2[is.na(gap_layer2)] <- -9999
+  
+  # Create an empty raster with the same properties as gap layer to classify
+  exp_clo <- rast(nrows = nrow(gap_layer1), ncols = ncol(gap_layer1), 
+                  ext = ext(gap_layer1), res = res(gap_layer1), crs = crs(gap_layer1))
+  values(exp_clo) <- -9999  # Initialize with the same placeholder value
+  
+  # Classify change group
+  exp_clo <- ifel(gap_layer1 > 0 & gap_layer2 == -9999, 1, exp_clo)#gap closure
+  exp_clo <- ifel(gap_layer1 == -9999 & gap_layer2 > 0, 2, exp_clo)#gap expansion
+  
+  # Revert placeholder values back to NA
+  exp_clo[exp_clo == -9999] <- NA
+  
   return(exp_clo)
 } 
-
 
 
 exp_clo_917 <- gap_change_class(gaps2009, gaps2017) # between 2009 and 2017
@@ -76,3 +85,4 @@ clo_growth_1721 <-mask(diff1721, clo_1721)
 
 writeRaster(clo_growth_917 , "data/processed/closure/closure_area_growth_917.tif") # data provided!
 writeRaster(clo_growth_1721 , "data/processed/closure/closure_area_growth_1721.tif")
+
