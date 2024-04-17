@@ -114,9 +114,9 @@ clo_growth_1721 <- crop(clo_growth_1721, boundaries.2017)
 #  -- need to differ classification for both time steps due to different growing periods
 
 gap_closure_mechanism917 <- function(diff_closure_layer, boundary_layer){       # 0.5 m * 8 = 4m height gain
-
+  
   closure_mechanism <- diff_closure_layer
-
+  
   # classify change group
   closure_mechanism[diff_closure_layer > 4  & boundary_layer ==1 ] <- 1 #horizontal closure (crown plasticity)
   closure_mechanism[diff_closure_layer >= 4  & boundary_layer ==0 ] <- 2 # above average vertical closure
@@ -127,9 +127,9 @@ gap_closure_mechanism917 <- function(diff_closure_layer, boundary_layer){       
 }
 
 gap_closure_mechanism1721 <- function(diff_closure_layer, boundary_layer){      # 0.5 m * 4 = 2m height gain
-
+  
   closure_mechanism <- diff_closure_layer
-
+  
   # classify change group
   closure_mechanism[diff_closure_layer > 2  & boundary_layer ==1 ] <- 1 #horizontal closure (crown plasticity)
   closure_mechanism[diff_closure_layer >= 2  & boundary_layer ==0 ] <- 2 # above average vertical closure
