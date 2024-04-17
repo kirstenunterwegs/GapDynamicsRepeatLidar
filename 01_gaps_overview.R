@@ -14,11 +14,11 @@ library(terra)
 
 # --- load layers ----
 
-gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
+gap.stack <- rast("data/processed/gaps_final/gaps_masked.tif")
 
-gaps2009 <- gap_stack[[1]]
-gaps2017 <- gap_stack[[2]]
-gaps2021 <- gap_stack[[3]]
+gaps2009 <- gap.stack[[1]]
+gaps2017 <- gap.stack[[2]]
+gaps2021 <- gap.stack[[3]]
 
 
 # convert gap stack to data frame 
@@ -41,7 +41,7 @@ gathered_df <- gap.stack.df %>%
   pivot_longer(cols = everything(), names_to = "year", values_to = "gap_id") %>%
   filter(!if_all(.cols = everything(), is.na))%>% # Drop rows with all NAs
   count(year, gap_id) %>%
-  filter(n >= 400) %>% # filter out gaps < 400m2, which emerged due to cropping of gaps layers to reserach area
+  filter(n >= 400) %>% # filter out gaps < 400m2, which emerged due to cropping of gaps layers to research area
   filter(!is.nan(gap_id))# Remove rows where gap_id is NaN
 
 # overall gap area
@@ -56,7 +56,7 @@ gap_counts <- gathered_df %>%
   summarize(number_gaps = length(unique(gap_id)))
 
 # overall number of gaps
-sum(gap_counts$number_gaps) # 11331 
+sum(gap_counts$number_gaps) 
 
 
 
@@ -98,10 +98,11 @@ gap_list <- gap_list[!is.na(gap_list[, 1]), ]
 print("convert gaps to df + area: "); print(Sys.time()-t); t <- Sys.time()
 
 # extract raster values per gap
-gap_df <- as.data.frame(c(gap_layer, foresttype), na.rm = FALSE)
+gap_df <- as.data.frame(c(gap_layer, foresttype), na.rm = FALSE) 
 names(gap_df) <- c("ID", "ftype")
 
-gap_list$ftype <- as.data.frame(getForestType(gap_df))[,2]
+df_forest <- as.data.frame(getForestType(gap_df))
+gap_list$ftype <- na.omit(df_forest$ftype)
 print("get forest type: "); print(Sys.time()-t); t <- Sys.time()
 
 gap_list$year <- as.factor(year)
@@ -157,7 +158,8 @@ names(gap_df) <- c("ID", "elevation")
 gap_df <- gap_df[!is.na(gap_df$ID),]# delete pixels without any gap
 print("extract values for gaps: "); print(Sys.time()-t); t <- Sys.time()
 
-gap_list$elevation <- as.data.frame(getElevation(gap_df))[,2]
+df_elevation <- as.data.frame(getElevation(gap_df))
+gap_list$elevation <- na.omit(df_elevation$elevation)
 print("get elevation: "); print(Sys.time()-t); t <- Sys.time()
 
 gap_list$year <- as.factor(year)
@@ -209,7 +211,8 @@ names(gap_df) <- c("ID",  "aspect")
 gap_df <- gap_df[!is.na(gap_df$ID),]# delete pixels without any gap
 print("extract values for gaps: "); print(Sys.time()-t); t <- Sys.time()
 
-gap_list$aspect <- as.data.frame(getAspect(gap_df))[,2]
+df_aspect<- as.data.frame(getAspect(gap_df))
+gap_list$aspect <- na.omit(df_aspect$aspect)
 print("get aspect: "); print(Sys.time()-t); t <- Sys.time()
 
 gap_list$year <- as.factor(year)
@@ -223,9 +226,9 @@ return(gap_list)
 
 #------- calculate gap stats per forest type
 
-stats_ftype_2009<- Gap_Stats_ftype(gap.stack$gaps9, chm9, foresttype, "2009")
-stats_ftype_2017 <- Gap_Stats_ftype(gap.stack$gaps17, chm17, foresttype, "2017")
-stats_ftype_2021 <- Gap_Stats_ftype(gap.stack$gaps21, chm21, foresttype, "2021")
+stats_ftype_2009<- Gap_Stats_ftype(gaps2009, foresttype, "2009")
+stats_ftype_2017 <- Gap_Stats_ftype(gaps2017, foresttype, "2017")
+stats_ftype_2021 <- Gap_Stats_ftype(gaps2021, foresttype, "2021")
 
 
 stats_all_ftype <- rbind(stats_ftype_2009, stats_ftype_2017, stats_ftype_2021)
@@ -237,25 +240,25 @@ saveRDS(stats_all_ftype, "data/processed/gap_features/stats_all_ftype.rds")
 
 #------- calculate gap stats per elevation
 
-stats_elevation_2009<- Gap_Stats_elevation(gap.stack$gaps9, chm9, elevation, "2009")
-stats_elevatione_2017 <- Gap_Stats_elevation(gap.stack$gaps17, chm17, elevation, "2017")
-stats_elevation_2021 <- Gap_Stats_elevation(gap.stack$gaps21, chm21, elevation, "2021")
+stats_elevation_2009<- Gap_Stats_elevation(gaps2009, elevation, "2009")
+stats_elevatione_2017 <- Gap_Stats_elevation(gaps2017, elevation, "2017")
+stats_elevation_2021 <- Gap_Stats_elevation(gaps2021, elevation, "2021")
 
 stats_all_elevation <- rbind(stats_elevation_2009, stats_elevatione_2017, stats_elevation_2021)
 stats_all_elevation$gap_area_ha <- stats_all_elevation$gap_area/10000 #convert area to ha
 stats_all_elevation <- stats_all_elevation[stats_all_elevation$gap_area >= 400,]
 
 stats_all_elevation$elevation <- factor(stats_all_elevation$elevation , levels=c("600-800", "800-1000", "1000-1200",
-                                                                                 "1200-1400", "1400-1600", "1600-1800"))
+                                                                                 "1200-1400", "1400-1600", "1600-1800", "1800-2000"))
 
 saveRDS(stats_all_elevation, "data/processed/gap_features/stats_all_elevation.rds")
 
 
 #------- calculate gap stats per aspect
 
-stats_aspect_2009<- Gap_Stats_aspect(gap.stack$gaps9, chm9, aspect, "2009")
-stats_aspect_2017 <- Gap_Stats_aspect(gap.stack$gaps17, chm17, aspect, "2017")
-stats_aspect_2021 <- Gap_Stats_aspect(gap.stack$gaps21, chm21, aspect, "2021")
+stats_aspect_2009<- Gap_Stats_aspect(gaps2009, aspect, "2009")
+stats_aspect_2017 <- Gap_Stats_aspect(gaps2017, aspect, "2017")
+stats_aspect_2021 <- Gap_Stats_aspect(gaps2021, aspect, "2021")
 
 stats_all_aspect <- rbind(stats_aspect_2009, stats_aspect_2017, stats_aspect_2021)
 stats_all_aspect$gap_area_ha <- stats_all_aspect$gap_area/10000 #convert area to ha
@@ -267,7 +270,7 @@ saveRDS(stats_all_aspect, "data/processed/gap_features/stats_all_aspect.rds")
 
 # --- summary 
 
-  
+
 gap_stats_summary <- stats_all_ftype %>% group_by(year)%>%
   summarise(n_gaps = n_distinct(gap_id),
             gap_area_total = round(sum(gap_area)/10000,2),
