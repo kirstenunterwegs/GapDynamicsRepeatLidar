@@ -55,7 +55,6 @@ df <- as.data.frame(gap_stack_2017, na.rm = FALSE) # takes some time!, heavy on 
 df1 <- df[!is.na(df$gap.id),] #expansion could only take place where there is a gap now, hence reduction of df to gap.id includes all expansion
 
 write_rds(df1, "data/processed/creation/stack_2017_new_exp_df.rds")
-df1 <- readRDS( "data/processed/creation/stack_2017_new_exp_df.rds")
 
 
 #2021
@@ -68,8 +67,9 @@ df <- as.data.frame(gap_stack_2021, na.rm = FALSE) # takes some time!, heavy on 
 df2 <- df[!is.na(df$gap.id),] #expansion could only take place where there is a gap now, hence reduction of df to gap.id includes all expansion
 
 write_rds(df2, "data/processed/creation/stack_2021_new_exp_df.rds")
-df2<- readRDS("data/processed/creation/stack_2021_new_exp_df.rds")
 
+
+rm(list = ls()) # clear RAM
 
 # --- calculate area and expansion area per gap(.id)
 
@@ -117,10 +117,10 @@ getForestType <- function(gap_df) {
     }
   }
   xx<- xx %>% mutate(forest_type = as.factor(recode(forest_type,
-                                                  `1`="Beech",
-                                                  `2`="Spruce-fir-beech",
-                                                  `4`="Spruce",
-                                                  `5`="Larch-pine")))
+                                                    `1`="Beech",
+                                                    `2`="Spruce-fir-beech",
+                                                    `4`="Spruce",
+                                                    `5`="Larch-pine")))
   return(xx)
 }
 
@@ -387,9 +387,9 @@ gap.creation <- gap_features921 %>% group_by(new.exp, year) %>%
   group_by(new.exp)%>%
   mutate(avg.gap.creation.annual = round(mean(gap.creation.annual),2),
          sd = sd(gap.creation.annual,2),
-        median = round(median(gap.creation.annual),2),
-        q2.5 = quantile(gap.creation.annual, 0.025),
-        q97.5 = quantile(gap.creation.annual, 0.975),)
+         median = round(median(gap.creation.annual),2),
+         q2.5 = quantile(gap.creation.annual, 0.025),
+         q97.5 = quantile(gap.creation.annual, 0.975),)
 
 saveRDS(gap.creation, "data/processed/creation/gap_creation_final.rds" )
 
