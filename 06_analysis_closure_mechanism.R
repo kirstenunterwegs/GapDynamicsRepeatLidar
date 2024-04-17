@@ -28,9 +28,8 @@ gaps2021 <- gap_stack[[3]]
 
 gap_closure_mechanism917 <- rast( "data/processed/closure/gap_closure_mechanism917.tif")
 
-# crop and stack
+# stack
 
-gaps2009 <- crop(gaps2009, gap_closure_mechanism917)
 gap_closure_mechanism_stack <- c(gap_closure_mechanism917, gaps2009)
 
 
@@ -45,7 +44,7 @@ names(gap_closure_mechanism_stack.df) <- c("closure_mechanism", "gap_id")
 
 # -- save data frame in case RAM runs full --
 # saveRDS(gap_closure_mechanism_stack.df,"data/processed/closure/gap_closure_mechanism_pergap_917.rds" )
- gap_closure_mechanism_stack.df <- readRDS("data/processed/closure/gap_closure_mechanism_pergap_917.rds")
+gap_closure_mechanism_stack.df <- readRDS("data/processed/closure/gap_closure_mechanism_pergap_917.rds")
 
 # aggregate closure and gap information 
 
@@ -130,7 +129,7 @@ names(gap_closure_mechanism_stack.df_1721) <- c("closure_mechanism", "gap_id")
 
 # # save data frame in case RAM runs full
 # saveRDS(gap_closure_mechanism_stack.df_1721,"processed/closure/gap_closure_mechanism_pergap_1721.rds" )
- gap_closure_mechanism_stack.df_1721 <- readRDS("data/processed/closure/gap_closure_mechanism_pergap_1721.rds" )
+gap_closure_mechanism_stack.df_1721 <- readRDS("data/processed/closure/gap_closure_mechanism_pergap_1721.rds" )
 
 
 # aggregate closure and gap information 
@@ -275,13 +274,6 @@ lateral_share_per_forest_type <- gap_clo_NP_91721 %>%
             sum_vertical_closure_area = sum(closure_area[closure_mechanism == "vertical closure"])/10000,
             share_lateral_closure = round(sum_lateral_closure_area / (sum_lateral_closure_area + sum_vertical_closure_area),2))
 
-# forest_type      sum_lateral_closure_area sum_vertical_closure_area share_lateral_closure
-
-# 1 Larch-pine                          36.0                      139.                   0.21
-# 2 Spruce                              24.7                       87.9                  0.22
-# 3 Spruce-fir-beech                    11.2                       45.3                  0.2 
-# 4 Beech                                2.78                      10.9                  0.2 
-
 
 
 # --- append lateral + vertical closure info (total gap closure) to main data frame  ----
@@ -352,15 +344,6 @@ average_closures_share <- gap_clo %>%
   pivot_wider(names_from = closure_mechanism, values_from = avg_share_closures) %>%
   mutate(share_lateral_on_total = `lateral closure`/`Total`)
 
-
-# for Berchtesgaden core zone mean closure shares
-
-# forest_type      `lateral closure` `vertical closure` Total share_lateral_on_total  --- new/updated
-
-# 1 Larch-Pine                   0.690               2.70  3.39                  0.204
-# 2 Spruce                       0.822               2.97  3.78                  0.218
-# 3 Spruce-fir-beech             1.00                3.76  4.74                  0.211
-# 4 Beech                        1.23                4.50  5.74                  0.215
 
 # --- distribution of closure shares across forest types
 
