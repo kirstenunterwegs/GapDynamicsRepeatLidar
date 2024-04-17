@@ -4,7 +4,7 @@ This repository holds code for running the analysis of forest gap dynamics (gap 
 
 Krüger, K., Senf, C., Jucker, T., Pflugmacher, D., Seidl, R. (2024). Gap expansion is the dominant driver of canopy openings in a temperate mountain forest landscape. Journal of Ecology. (link)
 
-The gap layer generated and used for the analysis  in this reserach as well as further auxiliary data can be obtained under the following link: (zenodo link)
+The gap layer generated and used for the analysis  in this reserach as well as further auxiliary data can be obtained under the following link: https://zenodo.org/records/10966262
 
 ## platforms
 
