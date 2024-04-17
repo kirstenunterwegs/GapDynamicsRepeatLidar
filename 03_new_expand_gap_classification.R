@@ -16,6 +16,9 @@ library(dplyr)
 
 gap_stack <- rast("data/processed/gaps_final/gaps_masked.tif")
 
+gaps2009 <- gap_stack[[1]]
+gaps2017 <- gap_stack[[2]]
+gaps2021 <- gap_stack[[3]]
 
 # stack gaps and process for classification
 
@@ -52,10 +55,10 @@ class_df <- foreach(i = unique(gaps.df$gaps2017), .combine = rbind) %dopar% { #"
   
   if (length(gapID_t1) == 1 & 0 %in% gapID_t1) {gap_info <- c(i,0)} # new gap
   if (length(gapID_t1) == 1 & !(0 %in% gapID_t1)) {gap_info <- c(i,1)} # gap same or sub of existing gap
-  if (length(gapID_t1) == 2 & 0 %in% gapID_t1) {gap_info <- c(i,2)} # extending gap
- # if (length(gapID_t1) == 2 & !(0 %in% gapID_t1)) {gap_info <- c(i,3)} # gap sub of several previously existing gaps (connecting several gaps without creating new gap area) > impossible
- # if (length(gapID_t1) >2 & !(0 %in% gapID_t1) ) {gap_info <- c(i,4)} # extension of more than 1 gap (connecting several gaps without creating new gap area) > impossible
-  if (length(gapID_t1) >2 &  0 %in% gapID_t1 ) {gap_info <- c(i,5)} # extension of more than 1 gap (connecting several gaps)
+  if (length(gapID_t1) == 2 & 0 %in% gapID_t1) {gap_info <- c(i,2)} # expanding gap
+  # if (length(gapID_t1) == 2 & !(0 %in% gapID_t1)) {gap_info <- c(i,3)} # gap sub of several previously existing gaps (connecting several gaps without creating new gap area) > impossible
+  # if (length(gapID_t1) >2 & !(0 %in% gapID_t1) ) {gap_info <- c(i,4)} # expansion of more than 1 gap (connecting several gaps without creating new gap area) > impossible
+  if (length(gapID_t1) >2 &  0 %in% gapID_t1 ) {gap_info <- c(i,5)} # expansion of more than 1 gap (connecting several gaps)
   gap_info
   
 }
@@ -68,12 +71,12 @@ saveRDS(class_df, "data/processed/creation/new_exp_gap_class_917.rds")
 class_df_917 <- class_df
 names(class_df) <- c("gap_id", "class") #rename columns
 gap_class_summary <- class_df %>% group_by(class) %>%  #get number of new , stable and expanding gaps
-                        summarise(n = n()) %>%
-                        mutate(perc = round(n/sum(n),2))
+  summarise(n = n()) %>%
+  mutate(perc = round(n/sum(n),2))
 
 # 0 = new gap
 # 1 = stable or shrinking gap
-# 2 = extending gap
+# 2 = expanding gap
 # 5 = connection of several gaps
 
 
@@ -82,14 +85,15 @@ ID_vector_stablegap <- class_df$gap_id[class_df$class == 1] # get IDs of only st
 ID_vector_extendgap <- class_df$gap_id[class_df$class > 1] # get IDs of only extending gaps
 ID_vector_newgap <- class_df$gap_id[class_df$class == 0] # get IDs of only new gaps
 
-ID_vector_replace_stable <- rep(2, length(ID_vector_stablegap)) # create replace vector for extending gap
-ID_vector_replace_extended <- rep(1, length(ID_vector_extendgap)) # create replace vector for extending gap
-ID_vector_replace_new <- rep(0, length(ID_vector_newgap)) # create replace vector for extending gap
+ID_vector_replace_stable <- rep(2, length(ID_vector_stablegap)) # create replace vector for stable gap       # 2 = stable gap
+ID_vector_replace_extended <- rep(1, length(ID_vector_extendgap)) # create replace vector for extending gap  # 1 = expanding gap
+ID_vector_replace_new <- rep(0, length(ID_vector_newgap)) # create replace vector for new gap                # 0 = new gap
 
-rclmat1 <- cbind(ID_vector_extendgap,ID_vector_replace_extended) # create reclassification matrix 
-rclamat2 <- cbind(ID_vector_newgap,ID_vector_replace_new )
-rclamat3 <- cbind(ID_vector_stablegap, ID_vector_replace_stable)
+rclmat1 <- cbind(ID_vector_extendgap,ID_vector_replace_extended) # create reclassification matrix  
+rclamat2 <- cbind(ID_vector_newgap,ID_vector_replace_new )                                        
+rclamat3 <- cbind(ID_vector_stablegap, ID_vector_replace_stable)                                
 rclmat <- rbind(rclmat1, rclamat2, rclamat3) # create full reclassification matrix based on gap ID
+
 
 gaps2017_class<- classify(gaps2017, rclmat, include.lowest=TRUE)
 writeRaster(gaps2017_class, "data/processed/creation/gaps2017_new_extended_stable.tif")
@@ -107,10 +111,10 @@ class_df <- foreach(i = unique(gaps.df$gaps2021), .combine = rbind) %dopar% { #"
   
   if (length(gapID_t1) == 1 & 0 %in% gapID_t1) {gap_info <- c(i,0)} # new gap
   if (length(gapID_t1) == 1 & !(0 %in% gapID_t1)) {gap_info <- c(i,1)} # gap same or sub of existing gap
-  if (length(gapID_t1) == 2 & 0 %in% gapID_t1) {gap_info <- c(i,2)} # extending gap
+  if (length(gapID_t1) == 2 & 0 %in% gapID_t1) {gap_info <- c(i,2)} # expanding gap
   #if (length(gapID_t1) == 2 & !(0 %in% gapID_t1)) {gap_info <- c(i,3)} # gap sub of several previously existing gaps
-  # if (length(gapID_t1) >2 & !(0 %in% gapID_t1) ) {gap_info <- c(i,4)} # extension of more than 1 gap (connecting several gaps without creating new gap area) > impossible
-  if (length(gapID_t1) >2 &  0 %in% gapID_t1 ) {gap_info <- c(i,5)} # extension of more than 1 gap (connecting several gaps)
+  # if (length(gapID_t1) >2 & !(0 %in% gapID_t1) ) {gap_info <- c(i,4)} # expansion of more than 1 gap (connecting several gaps without creating new gap area) > impossible
+  if (length(gapID_t1) >2 &  0 %in% gapID_t1 ) {gap_info <- c(i,5)} # expansion of more than 1 gap (connecting several gaps)
   gap_info
   
 }
@@ -127,7 +131,7 @@ gap_class_summary <- class_df %>% group_by(class) %>%  #get number of new , stab
 
 # 0 = new gap
 # 1 = stable or shrinking gap
-# 2 = extending gap
+# 2 = expanding gap
 # 5 = connection of several gaps
 
 
@@ -136,9 +140,9 @@ ID_vector_stablegap <- class_df$gap_id[class_df$class == 1] # get IDs of only st
 ID_vector_extendgap <- class_df$gap_id[class_df$class > 1] # get IDs of only extending gaps
 ID_vector_newgap <- class_df$gap_id[class_df$class == 0] # get IDs of only new gaps
 
-ID_vector_replace_stable <- rep(2, length(ID_vector_stablegap)) # create replace vector for extending gap
-ID_vector_replace_extended <- rep(1, length(ID_vector_extendgap)) # create replace vector for extending gap
-ID_vector_replace_new <- rep(0, length(ID_vector_newgap)) # create replace vector for extending gap
+ID_vector_replace_stable <- rep(2, length(ID_vector_stablegap)) # create replace vector for stable gap       # 2 = stable gap
+ID_vector_replace_extended <- rep(1, length(ID_vector_extendgap)) # create replace vector for extending gap  # 1 = expanding gap
+ID_vector_replace_new <- rep(0, length(ID_vector_newgap)) # create replace vector for new gap                # 0 = new gap
 
 rclmat1 <- cbind(ID_vector_extendgap,ID_vector_replace_extended) # create reclassification matrix 
 rclamat2 <- cbind(ID_vector_newgap,ID_vector_replace_new )
