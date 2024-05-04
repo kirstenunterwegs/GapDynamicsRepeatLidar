@@ -2,7 +2,7 @@
 
 This repository holds code for running the analysis of forest gap dynamics (gap formation and gap closure) basing on gap raster layers generated from repeated lidar data. For a detailed description of the purpose, methodology and results, see the following paper: 
 
-Krüger, K., Senf, C., Jucker, T., Pflugmacher, D., Seidl, R. (2024). Gap expansion is the dominant driver of canopy openings in a temperate mountain forest landscape. Journal of Ecology. (link)
+Krüger, K., Senf, C., Jucker, T., Pflugmacher, D., Seidl, R. (2024). Gap expansion is the dominant driver of canopy openings in a temperate mountain forest landscape. Journal of Ecology. (http://doi.org/10.1111/1365-2745.14320)
 
 The data to reproduce the analysis can be obtained under the following link: https://zenodo.org/records/10966262
 
